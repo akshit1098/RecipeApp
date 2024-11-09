@@ -50,20 +50,37 @@ class ImageCacheManager {
         return cache
     }()
     
+    private static let fileManager = FileManager.default
+    private static let cacheDirectory: URL = {
+        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let cacheDirectory = documentsDirectory.appendingPathComponent("ImageCache")
+        if !fileManager.fileExists(atPath: cacheDirectory.path) {
+            try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true, attributes: nil)
+        }
+        return cacheDirectory
+    }()
+    
+    // Check for cached image in both memory (URLCache) and disk
     static func loadImage(from url: URL, completion: @escaping (UIImage?) -> Void) {
         let request = URLRequest(url: url)
         
-        // Check for a cached response first
-        if let cachedResponse = sharedCache.cachedResponse(for: request),
-           let image = UIImage(data: cachedResponse.data) {
-            // Return cached image if available
+        // First, try to load image from in-memory cache
+        if let cachedImage = loadImageFromMemory(for: url) {
             DispatchQueue.main.async {
-                completion(image)
+                completion(cachedImage)
             }
             return
         }
         
-        // If not cached, fetch from the network and cache it to disk
+        // Then, try to load image from disk cache
+        if let cachedImage = loadImageFromDisk(for: url) {
+            DispatchQueue.main.async {
+                completion(cachedImage)
+            }
+            return
+        }
+        
+        // If not cached, fetch from the network and cache it
         URLSession.shared.dataTask(with: request) { data, response, error in
             // Handle network request failure
             if let error = error {
@@ -82,7 +99,11 @@ class ImageCacheManager {
                 return
             }
             
-            // Create a cached response and store it to disk
+            // Cache image to memory and disk
+            storeImageToMemory(image, for: url)
+            storeImageToDisk(image, for: url)
+            
+            // Store cached response in URLCache
             let cachedResponse = CachedURLResponse(response: response, data: data)
             sharedCache.storeCachedResponse(cachedResponse, for: request)
             
@@ -91,5 +112,48 @@ class ImageCacheManager {
                 completion(image)
             }
         }.resume()
+    }
+    
+    // Memory cache: Load image from in-memory cache
+    private static func loadImageFromMemory(for url: URL) -> UIImage? {
+        // Check URLCache (in-memory cache) for the image
+        if let cachedResponse = sharedCache.cachedResponse(for: URLRequest(url: url)),
+           let image = UIImage(data: cachedResponse.data) {
+            return image
+        }
+        return nil
+    }
+    
+    // Disk cache: Load image from disk cache
+    private static func loadImageFromDisk(for url: URL) -> UIImage? {
+        let filePath = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        
+        guard fileManager.fileExists(atPath: filePath.path) else { return nil }
+        
+        if let data = try? Data(contentsOf: filePath) {
+            return UIImage(data: data)
+        }
+        return nil
+    }
+    
+    // Memory cache: Store image in the in-memory cache (URLCache)
+    private static func storeImageToMemory(_ image: UIImage, for url: URL) {
+        let data = image.pngData() ?? image.jpegData(compressionQuality: 0.8)
+        if let data = data {
+            let cachedResponse = CachedURLResponse(response: URLResponse(url: url, mimeType: "image/png", expectedContentLength: data.count, textEncodingName: nil), data: data)
+            sharedCache.storeCachedResponse(cachedResponse, for: URLRequest(url: url))
+        }
+    }
+    
+    // Disk cache: Store image in disk cache
+    private static func storeImageToDisk(_ image: UIImage, for url: URL) {
+        guard let data = image.pngData() ?? image.jpegData(compressionQuality: 0.8) else { return }
+        let filePath = cacheDirectory.appendingPathComponent(url.lastPathComponent)
+        
+        do {
+            try data.write(to: filePath)
+        } catch {
+            print("Failed to save image to disk: \(error.localizedDescription)")
+        }
     }
 }
