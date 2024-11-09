@@ -56,3 +56,7 @@ The app fetches recipes from the following endpoints:
 - **Malformed Data**: [https://d3jbb8n5wk0qxi.cloudfront.net/recipes-malformed.json](https://d3jbb8n5wk0qxi.cloudfront.net/recipes-malformed.json)
 - **Empty Data**: [https://d3jbb8n5wk0qxi.cloudfront.net/recipes-empty.json](https://d3jbb8n5wk0qxi.cloudfront.net/recipes-empty.json)
 
+## Sample Recipe Images
+![Main-Screen](mainscreen.png)
+![Filter-Screen](filterscreen.png)
+![Video-Screen](playingvideo.png)
