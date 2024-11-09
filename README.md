@@ -18,10 +18,10 @@ The primary focus of the project was:
 
 ## Time Spent
 
-Approximately **5-6 hours** were spent on this project. The time was allocated as follows:
+Approximately **4-5 hours** were spent on this project. The time was allocated as follows:
 - **2 hours** for building the app's UI and integrating with the API.
 - **2 hours** for implementing image caching, manual refresh, and error handling.
-- **1-2 hours** for writing unit tests to ensure robust data handling.
+- **1 hour** for writing unit tests to ensure robust data handling.
 
 ## Trade-offs and Decisions
 
